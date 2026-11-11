@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Marina &amp; Antonio · prova do traço por código</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#FFEFD7">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&amp;display=swap">
+  <link rel="stylesheet" href="css/prova-3d.css">
+  <style>
+    /* A abertura agora vai até dentro da igreja: precisa de mais scroll que a prova anterior */
+    .abertura3d { --rolagem: 680vh; }
+    /* O trilho das etapas: cinco pontos na beira direita. O nome de cada um aparece ao passar o ponteiro ou com o foco. */
+    .trilho { position: absolute; right: max(0.5rem, env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; opacity: 0; }
+    .trilho button { position: relative; width: 1.75rem; height: 1.75rem; padding: 0; border: 0; background: none; cursor: pointer; color: var(--tinta); -webkit-tap-highlight-color: transparent; }
+    .trilho button::before { content: ""; position: absolute; left: 50%; top: 50%; width: 0.3rem; height: 0.3rem; margin: -0.2rem 0 0 -0.2rem; border: 1px solid currentColor; border-radius: 50%; background: var(--papel); transition: transform 0.3s, background-color 0.3s; }
+    .trilho button + button::after { content: ""; position: absolute; left: 50%; bottom: calc(50% + 0.3rem); width: 1px; height: calc(100% - 0.6rem); margin-left: -0.5px; background: currentColor; opacity: 0.35; }
+    .trilho button[aria-current]::before { background: var(--marinho); border-color: var(--marinho); transform: scale(1.35); }
+    .trilho span { position: absolute; right: 100%; top: 50%; transform: translateY(-50%); padding-right: 0.15rem; font-weight: 500; font-size: 0.62rem; line-height: 1; letter-spacing: 0.3em; text-transform: uppercase; white-space: nowrap; text-shadow: 0 0 0.5rem var(--papel), 0 0 0.2rem var(--papel); opacity: 0; transition: opacity 0.25s; pointer-events: none; }
+    .trilho button:hover span, .trilho button:focus-visible span { opacity: 1; }
+    .trilho button:focus-visible { outline: 1px solid var(--marinho); outline-offset: -0.35rem; border-radius: 50%; }
+
+    /* A frase do caminho. O js monta, a partir do texto da página, as partes que aparecem uma de cada vez no fundo
+       da nave e as duas metades que ficam em volta do monograma no fim. --corpo e --selo vêm do js: o corpo das
+       partes na nave e a largura final do monograma na tela. */
+    .frase { --cf: clamp(1.7rem, calc(var(--selo, 17rem) * 0.15), 4.4rem); position: absolute; inset: 0; margin: 0; overflow: hidden; pointer-events: none; text-align: center; font-style: italic; font-weight: 400; color: var(--marinho); }
+    /* o texto corrido fica só para o leitor de tela */
+    .frase-texto { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    /* Letra gravada: só contorno e hachura, como o monograma antes da tinta. A tinta corre por ela da esquerda para
+       a direita, com a frente nítida e inclinada como o itálico (--t vai de -8, sem tinta, a 108, cheia). --s é a
+       escala em que a peça está na tela: o contorno e os riscos ficam com a mesma grossura em qualquer tamanho.
+       A folga em volta deixa a tinta chegar ao til, à cedilha e à ponta do itálico. */
+    .gravada { --s: 1; --t: -8; display: inline-block; padding: 0.16em 0.26em 0.32em; white-space: nowrap; line-height: 1; color: transparent; -webkit-text-stroke: calc(1.1px / var(--s)) var(--marinho);
+      background-image: linear-gradient(100deg, var(--marinho) calc(var(--t) * 1%), transparent calc(var(--t) * 1%)), repeating-linear-gradient(-56deg, var(--marinho) 0, var(--marinho) calc(1px / var(--s)), transparent calc(1px / var(--s)), transparent calc(4.2px / var(--s)));
+      -webkit-background-clip: text; background-clip: text; }
+    /* na nave: o js põe cada parte no fim do tapete e a faz crescer a partir dali; o halo de papel a separa do desenho */
+    .parte { position: absolute; left: 0; top: 0; visibility: hidden; transform-origin: 0 0; font-size: var(--corpo, 3.5rem); filter: drop-shadow(0 0 0.3em var(--papel)) drop-shadow(0 0 0.3em var(--papel)); }
+    /* no fim: meia frase acima e meia abaixo do monograma, e a origem dela. O js prende o miolo ao florão e corta a
+       janela pela beira de dentro da coroa: é a coroa, ao abrir, que descobre a frase */
+    .fim-janela, .fim-miolo { position: absolute; inset: 0; }
+    .fim-janela { visibility: hidden; }
+    .fim { position: absolute; left: 0; width: 100%; font-size: var(--cf); line-height: 1; }
+    .fim-acima { bottom: calc(50% + var(--selo, 17rem) * 0.447 - 0.26em); }
+    .fim-abaixo { top: calc(50% + var(--selo, 17rem) * 0.463 - 0.1em); }
+    .frase-fonte { visibility: hidden; position: absolute; left: 0; width: 100%; top: calc(50% + var(--selo, 17rem) * 0.463 + var(--cf) * 1.6); font-style: normal; font-weight: 500; font-size: clamp(0.66rem, min(2.8vw, 1.7vh), 0.9rem); line-height: 1.2; letter-spacing: 0.34em; text-indent: 0.34em; text-transform: uppercase; color: var(--tinta); }
+  </style>
+  <link rel="modulepreload" href="js/vendor/three.module.js">
+  <link rel="modulepreload" href="js/vendor/three.core.js">
+  <script type="module" src="js/prova-traco.js"></script>
+</head>
+<body>
+  <!-- Monograma do casal, o mesmo do index.html, em três partes: o A do meio, o M da esquerda e o da direita -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+        <path id="mono-1" pathLength="1" d="M386.67 298.41C393.76 293.85 401.06 289.76 408.6 285.99C422.53 318.86 431.06 353.35 431.06 389.19C431.06 403 429.93 416.77 428.2 430.46C427.53 435.81 434.38 439.3 437.47 443.73C429.77 445.76 422.57 444.63 415.86 440.33C407.49 453.12 395.71 460.41 380.53 462.22C386.54 448.6 396.46 436.11 398.58 421.38C400.56 407.61 401.85 393.75 401.85 379.83C401.85 351.91 395.99 324.63 386.67 298.41ZM378.36 277.6C365.99 249.43 350.65 222.76 336.02 195.74C339.83 188.55 343.56 181.33 347.14 174.02C364.43 204.9 383.7 234.63 399.5 266.33C392.3 269.81 385.26 273.54 378.36 277.6ZM329.45 138.6C338.01 118.52 343.83 97.71 343.83 76.46C343.83 67.31 341.7 48.48 329.23 48.48C316.81 48.48 314.67 67.35 314.67 76.44C314.67 97.94 321.02 118.91 329.45 138.6M277.93 462.22C262.74 460.41 250.96 453.12 242.59 440.33C235.88 444.63 228.68 445.76 220.99 443.73C224.09 439.3 230.97 435.81 230.29 430.45C228.57 416.78 227.44 403.04 227.44 389.25C227.44 323.99 255.52 268.89 287.94 214.13C297.82 197.44 308.9 179.76 318.57 161.34C306.8 135.85 297.41 108.76 297.41 80.44C297.41 60.63 305.53 36.48 329.24 36.48C352.89 36.48 361 60.74 361 80.46C361 127.93 335.78 171.42 313.61 211.8C284.83 264.21 256.55 318.56 256.55 379.89C256.55 393.79 257.85 407.64 259.82 421.39C261.94 436.12 271.89 448.61 277.93 462.22Z"/>
+        <path id="mono-2" pathLength="1" d="M329.29 376.5C323.34 376.5 320.6 369.51 320.6 364.47C320.6 355.42 324.44 346.79 329.32 339C334.5 347.52 337.85 356.2 337.85 364.33C337.85 369.27 335.25 376.5 329.29 376.5M294.5 274.69C291.62 281.03 288.87 287.41 286.29 293.88C294.4 300.01 305.1 309.23 314.65 319.77C304.76 332.27 296.16 346.73 296.16 362.82C296.16 381.01 311.36 395.76 329.42 395.76C347.63 395.76 362.29 380.46 362.29 362.44C362.29 329.3 320.32 291.61 294.5 274.69M273.86 262.87C244.13 247.9 212.3 238.18 181.49 225.79C154.84 215.06 129.28 201.86 103.95 188.34C88.46 180.07 54.7 161.54 54.7 141.19C54.7 132.83 59.31 122.48 68.98 122.48C90.63 122.48 107.34 164.52 115.57 180.87C127.34 186.97 139.02 193.19 150.93 199.01C144.82 185.88 138.4 172.92 131.74 160.06C118.46 134.41 102.35 104.18 69.01 104.18C48.18 104.18 30.22 119.78 30.22 141.3C30.22 169.22 62.37 188.07 83.91 199.89C101.28 209.42 118.94 218.61 136.94 227.04C149.17 255.85 159.73 285.39 167.11 315.84C191.69 417.29 105.17 401.79 102.32 356.66C101.95 350.93 104.56 339.16 110.78 337.48C122.38 352.07 138.26 342.26 136.33 327.75C132.84 301.45 85.55 287.44 69.04 346.68C62.65 347.62 47.91 348.81 44.27 361.9C55.52 362.65 69.5 365.96 75.99 376.19C80.02 382.55 82.59 389.05 87.78 394.79C92.59 400.09 98.27 404.61 104.56 408.03C112.49 412.34 121.35 414.9 130.34 415.58C146.57 416.81 163.65 411.51 175.67 400.34C217.58 361.4 185.13 282.53 168.87 240.98C201.24 253.95 234.73 264.11 265.58 280.66C268.23 274.67 271 268.75 273.86 262.87"/>
+        <path id="mono-3" pathLength="1" d="M613.43 359.74C613.72 360.42 613.97 361.14 614.18 361.9C613.46 361.95 612.74 362 612 362.07C601.18 363.1 588.54 366.62 582.46 376.2C578.43 382.56 575.86 389.06 570.67 394.79C565.87 400.09 560.19 404.61 553.89 408.03C545.97 412.35 537.11 414.9 528.11 415.58C511.88 416.82 494.8 411.52 482.78 400.34C455.97 375.42 459.6 334.15 469.95 296.77C469.97 296.72 469.98 296.68 469.99 296.64C473.75 283.57 478.45 270.02 483.64 256.26C483.72 256.04 483.8 255.83 483.88 255.61C485.71 250.76 487.6 245.89 489.53 241C489.55 240.96 489.56 240.92 489.58 240.88C489.25 241.01 488.93 241.14 488.6 241.26C488.6 241.27 488.59 241.27 488.58 241.27C440.33 260.28 390.7 273.45 352.3 311.14C347.73 305.52 342.92 300.17 337.87 294.99C384.27 253.86 444.91 240.77 500.04 215.79C508.95 195.51 518.7 175.58 528.83 155.95C541.8 130.82 558.19 104.17 590.16 104.17C611.33 104.17 628.22 120.8 628.22 142.03C628.22 178.15 565.92 204.64 538.19 218.81C542.59 209.03 547.16 199.34 551.9 189.72C568.37 180.98 603.75 162.39 603.75 140.72C603.75 131.98 598.57 122.49 588.92 122.49C570.45 122.49 557.59 151.81 550.64 165.58C540.51 185.67 530.77 205.93 521.93 226.55C521.87 226.67 521.82 226.8 521.77 226.92C510.74 252.62 501.12 278.88 493.86 306C493.41 307.63 492.99 309.27 492.58 310.91C492.16 312.55 491.75 314.19 491.35 315.84C491.26 316.2 491.17 316.57 491.09 316.93C491.04 317.13 491 317.33 490.95 317.53C469.47 409.64 541.07 403.24 554.18 366.23C554.23 366.1 554.28 365.96 554.32 365.83C554.42 365.54 554.52 365.24 554.61 364.95C554.61 364.94 554.62 364.94 554.61 364.93C555.03 363.62 555.36 362.26 555.61 360.87C555.7 360.42 555.77 359.97 555.84 359.51C555.85 359.48 555.85 359.44 555.85 359.41C555.94 358.82 556.01 358.22 556.07 357.62C556.1 357.3 556.12 356.98 556.14 356.66C556.5 350.93 553.89 339.16 547.67 337.48C538.43 349.11 526.47 345.24 522.96 335.85C522.96 335.82 522.95 335.8 522.94 335.77C522.25 333.23 521.95 330.48 522.12 327.75C522.6 324.16 523.89 320.8 525.81 317.82C525.85 317.77 525.88 317.71 525.92 317.66C537.18 300.48 569.41 296.31 585.55 335.4C585.7 335.74 585.83 336.08 585.97 336.42C586.11 336.73 586.23 337.05 586.35 337.37C586.51 337.78 586.67 338.2 586.82 338.62C587.13 339.45 587.43 340.3 587.73 341.17L587.73 341.18C588.02 342.05 588.31 342.93 588.59 343.84C588.73 344.31 588.87 344.79 589.02 345.27C589.15 345.74 589.29 346.21 589.42 346.69C589.56 346.71 589.7 346.73 589.85 346.75C594.1 347.36 601.51 348.16 607.19 352.09C609.79 353.89 612.03 356.34 613.43 359.74"/>
+    </defs>
+  </svg>
+
+  <main>
+    <!-- Prova: a fachada modelada em 3D (corpo central e torres) com o traço de gravura gerado por código,
+         no caminho do site da Chartogne-Taillet. Nenhuma ilustração entra como textura. Usa o css da prova anterior. -->
+    <section class="abertura3d" aria-label="Abertura: a Catedral da Sé">
+      <div class="palco3d">
+        <canvas class="tela3d" role="img" aria-label="A fachada da Catedral da Sé de São Luís vista de frente, com as duas torres, entre palmeiras, em traço de gravura azul sobre papel creme. Um tapete desce a escada. Ao rolar, a porta do meio se abre e a vista entra pela nave enfeitada de flores, pelo tapete, em direção ao altar."></canvas>
+        <div class="ceu-texto">
+          <h1 class="nomes">Marina <span class="e">&amp;</span> Antonio</h1>
+          <p class="lugar">Catedral da Sé <span aria-hidden="true">·</span> São Luís</p>
+        </div>
+        <!-- A frase do caminho (verso de exemplo: trocar pelo do casal). Cada <span> é uma linha da estrofe que aparece
+             na nave; a linha com data-vira abre a metade que, no fim, fica abaixo do monograma. Palavras de uma ou duas
+             letras chegam junto com a seguinte. Para caber no branco do fundo: até umas 8 palavras, linhas curtas. -->
+        <blockquote class="frase">
+          <p class="frase-texto"><span>Põe-me</span> <span>como selo</span> <span data-vira>sobre o teu</span> <span>coração</span></p>
+          <footer class="frase-fonte">Cântico dos Cânticos 8,6</footer>
+        </blockquote>
+        <nav class="trilho" aria-label="Etapas do caminho">
+          <button type="button" data-p="0"><span>Praça</span></button>
+          <button type="button" data-p="0.15"><span>Fachada</span></button>
+          <button type="button" data-p="0.31"><span>Porta</span></button>
+          <button type="button" data-p="0.56"><span>Nave</span></button>
+          <button type="button" data-p="1"><span>Monograma</span></button>
+        </nav>
+        <p class="dica" aria-hidden="true">Role</p>
+        <p class="aviso" hidden>Este navegador não abriu a cena em 3D.</p>
+      </div>
+    </section>
+
+    <section class="depois">
+      <div class="depois-dentro">
+        <p class="sobre">Prova do traço por código</p>
+        <h2>O resto do site continua aqui</h2>
+        <p class="nota">Traço de gravura fina, sem tremor. A fachada e o bando de pássaros ao longe são desenhados por código. As palmeiras e os postes da praça, capitéis, frontões das janelas, a imagem do alto, os balaústres, as flores, a pomba da fachada (sete poses da mesma folha), os lustres, os castiçais, as pinturas do forro (o medalhão da pomba, os painéis lobulados com anjos, os painéis estreitos com querubins, a rosácea, os crescentes e os ladrilhos de cruz), os dois altares colaterais, o retábulo da capela-mor e a cartela do arco-cruzeiro (com o ramo de palma) são desenho à mão. A nave, os bancos, o tapete e o piso de ladrilho são feitos por código. A frente do altar e o forro seguem a Sé de São Luís: a abóbada é revestida de cacos brancos, o arco-cruzeiro tem moldura de mármore com cornija, e cada altar colateral tem uma janela de veneziana e treliça em cima. No fim, a câmera levanta o olhar e sobe até o florão do forro, onde o monograma está pintado; a coroa de rosas cresce e sai pelas beiras da tela, como se a câmera passasse por dentro dela, e o monograma, gravado em contorno e hachura como o resto da cena, fica sozinho no papel e se enche: a tinta corre por dentro do traço, do alto do A até as pontas dos dois M. Nem a coroa nem a tinta esmaecem. Pétalas caem na nave, e o trilho de pontos à direita marca a etapa e leva a cada uma. No computador o cenário acompanha o mouse; no celular, a inclinação do aparelho, como se a tela fosse uma janela (no iPhone, o sistema pede licença no primeiro toque). Uma frase acompanha o caminho, uma parte de cada vez: cada parte nasce como um ponto no fundo da nave e cresce com o passo, chega gravada em contorno e hachura, a tinta corre por ela da esquerda para a direita, e ela desce pelo tapete e passa por baixo da câmera enquanto a seguinte nasce lá no fundo. A frase segue a câmera com um atraso amortecido: um gesto rápido no scroll não faz a palavra saltar. No fim a frase inteira está em volta do monograma, atrás da coroa de rosas: é a coroa, ao abrir, que a descobre, e a tinta que enche o monograma enche também as letras. Quatro detalhes pequenos respondem ao visitante e depois sossegam: uma pomba branca vive nas janelas da fachada, cisca, pula de uma janela para outra (sempre para uma que esteja na tela) e levanta voo quando a porta abre, para o lado em que estava olhando (e volta a pousar se a porta fecha); as chamas dos lustres se deitam e tremulam enquanto a câmera anda; as fitas dos buquês dos bancos se abrem para fora do corredor um pouco antes de a câmera chegar a elas; e, quando a tinta acaba de encher o monograma, ele dá uma apertada no papel, como um sinete.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
